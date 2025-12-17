@@ -1,0 +1,19 @@
+uuid = "e8effffd-e057-467f-950c-f39d285920be"
+name = "Genre Mapper"
+authors = ["Bob Swift"]
+description = """
+This plugin provides the ability to standardize genres in the "genre"
+tag by matching the genres as found to a standard genre as defined in
+the genre replacement mapping configuration option. Once..."""
+categories = ["metadata"]
+homepage = "https://picard-plugins-user-guides.readthedocs.io/en/latest/genre_mapper/user_guide.html"
+api = ['3.0']
+license = "GPL-2.0"
+license_url = "https://www.gnu.org/licenses/gpl-2.0.txt"
+long_description = """
+This plugin provides the ability to standardize genres in the "genre"
+tag by matching the genres as found to a standard genre as defined in
+the genre replacement mapping configuration option. Once installed a
+settings page will be added to Picard's options, which is where the
+plugin is configured.
+"""
