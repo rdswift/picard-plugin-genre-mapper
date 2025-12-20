@@ -20,6 +20,7 @@
 
 import re
 
+from picard.config import get_config
 from picard.metadata import MULTI_VALUED_JOINER
 from picard.plugin3.api import (
     OptionsPage,
@@ -214,15 +215,39 @@ class GenreMapperOptionsPage(OptionsPage):
 
 def enable(api: PluginApi):
     """Called when plugin is enabled."""
-
     # Register configuration options
     api.plugin_config.register_option(OPT_MATCH_PAIRS, ''),
     api.plugin_config.register_option(OPT_MATCH_FIRST, False),
     api.plugin_config.register_option(OPT_MATCH_ENABLED, False),
     api.plugin_config.register_option(OPT_MATCH_REGEX, False),
 
+    # Migrate settings from 2.x version if available
+    migrate_settings(api)
+
     plugin = GenreMapper(api)
     plugin.refresh()
 
     api.register_track_metadata_processor(plugin.track_genre_mapper)
     api.register_options_page(GenreMapperOptionsPage)
+
+
+def migrate_settings(api: PluginApi):
+    cfg = get_config()
+
+    if cfg.setting.raw_value(OPT_MATCH_PAIRS) is None or api.plugin_config[OPT_MATCH_PAIRS]:
+        return
+
+    api.logger.info("Migrating settings from 2.x version.")
+
+    mapping = [
+        (OPT_MATCH_PAIRS, str),
+        (OPT_MATCH_FIRST, bool),
+        (OPT_MATCH_ENABLED, bool),
+        (OPT_MATCH_REGEX, bool),
+    ]
+
+    for key, qtype in mapping:
+        if cfg.setting.raw_value(key) is None:
+            continue
+        api.plugin_config[key] = cfg.setting.raw_value(key, qtype=qtype)
+        cfg.setting.remove(key)

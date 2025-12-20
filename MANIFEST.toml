@@ -4,7 +4,7 @@ authors = ["Bob Swift"]
 description = """
 This plugin provides the ability to standardize genres in the "genre"
 tag by matching the genres as found to a standard genre as defined in
-the genre replacement mapping configuration option. Once..."""
+the genre replacement mapping configuration option."""
 categories = ["metadata"]
 homepage = "https://picard-plugins-user-guides.readthedocs.io/en/latest/genre_mapper/user_guide.html"
 api = ['3.0']
