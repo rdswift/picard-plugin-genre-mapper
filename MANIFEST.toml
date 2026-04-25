@@ -17,3 +17,4 @@ the genre replacement mapping configuration option. Once installed a
 settings page will be added to Picard's options, which is where the
 plugin is configured.
 """
+report_bugs_to = "https://github.com/rdswift/picard-plugin-genre-mapper/issues"
