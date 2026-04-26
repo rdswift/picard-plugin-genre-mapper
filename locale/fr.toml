@@ -1,1 +1,13 @@
+"manifest.description" = "Ce plugin permet d'uniformiser les genres dans la balise « genre »\nen faisant correspondre les genres détectés à un genre standard défini dans\nl'option de configuration du mappage de remplacement des genres."
+"manifest.long_description" = "Ce plugin permet d'uniformiser les genres dans la balise « genre »\nen faisant correspondre les genres détectés à un genre standard défini dans\nl'option de configuration « genre replacement mapping ». Une fois installé,\nune page de paramètres sera ajoutée aux options de Picard, où\nle plugin sera configuré.\n"
+"manifest.name" = "Classificateur de genres"
+"qt.GenreMapperOptionsPage.page.option.enable" = "Activer la correspondance des genres"
+"qt.GenreMapperOptionsPage.page.text" = "Voici les paires « original / remplacement » utilisées pour associer une entrée de genre à une autre. Chaque paire doit être saisie sur une ligne distincte sous la forme suivante :\n\n&nbsp;&nbsp;&nbsp; <strong>[chaîne de test de correspondance de genre]</strong>=<strong>[genre de remplacement]</strong>\n\nÀ moins que l'option « expressions régulières » ne soit activée, les caractères génériques pris en charge dans la partie chaîne de test du mappage incluent « * » et « ? » pour correspondre respectivement à un nombre quelconque de caractères et à un seul caractère. Un exemple de mappage de tous les types de genres rock (par exemple, country rock, hard rock, rock progressif, rockabilly) vers « Rock » serait réalisé à l'aide de la ligne suivante :\n\n&nbsp;&nbsp;&nbsp; <strong>\\*rock\\*</strong>=<strong>Rock</strong>\n\nLes lignes vides et les lignes commençant par un signe égal (=) seront ignorées. Les tests ne tiennent pas compte de la casse lors de la correspondance. Les remplacements seront effectués dans l'ordre où ils apparaissent dans la liste."
+"qt.GenreMapperOptionsPage.page.title" = "Classificateur de genres"
+"qt.GenreMapperOptionsPage.section.replacements.option.first_only" = "N'appliquer que la première correspondance trouvée"
+"qt.GenreMapperOptionsPage.section.replacements.option.use_regex" = "Les tests de correspondance sont saisis sous forme d'expressions régulières"
+"qt.GenreMapperOptionsPage.section.replacements.placeholder.pairs" = "Saisissez les paires de remplacement (une par ligne)"
+"qt.GenreMapperOptionsPage.section.replacements.title" = "Paires de rechange"
+"qt.GenreMapperOptionsPage.window.title" = "Paramètres de Genre Mapper"
+"ui.options_page_title" = "Classificateur de genres"
 
