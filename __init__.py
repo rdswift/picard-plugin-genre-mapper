@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2022-2025 Bob Swift (rdswift)
+# Copyright (C) 2022-2026 Bob Swift (rdswift)
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -30,6 +30,7 @@ from picard.plugin3.api import (
 from .ui_options_genre_mapper import (
     Ui_GenreMapperOptionsPage,
 )
+from re_utils import make_re
 
 
 USER_GUIDE_URL = 'https://picard-plugins-user-guides.readthedocs.io/en/latest/genre_mapper/user_guide.html'
@@ -64,22 +65,6 @@ class GenreMapper:
             self.api.logger.warning("Unable to read the '%s' setting.", OPT_MATCH_PAIRS,)
             return
 
-        def _make_re(map_string):
-            # Replace period with temporary placeholder character (newline)
-            re_string = str(map_string).strip().replace('.', '\n')
-
-            # Convert wildcard characters to regular expression equivalents
-            re_string = re_string.replace('*', '.*').replace('?', '.')
-
-            # Escape carat and dollar sign for regular expression
-            re_string = re_string.replace('^', '\\^').replace('$', '\\$')
-
-            # Replace temporary placeholder characters with escaped periods
-            re_string = '^' + re_string.replace('\n', '\\.') + '$'
-
-            # Return regular expression with carat and dollar sign to force match condition on full string
-            return re_string
-
         pairs = []
         for pair in pairs_split(self.api.plugin_config[OPT_MATCH_PAIRS]):
             if "=" not in pair:
@@ -91,7 +76,7 @@ class GenreMapper:
                 continue
 
             replacement = replacement.strip()
-            pairs.append((original if self.api.plugin_config[OPT_MATCH_REGEX] else _make_re(original), replacement))
+            pairs.append((original if self.api.plugin_config[OPT_MATCH_REGEX] else make_re(original), replacement))
             self.api.logger.debug('Add genre mapping pair: "%s" = "%s"', original, replacement,)
 
         GenreMappingPairs.set_pairs(pairs)
