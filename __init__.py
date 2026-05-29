@@ -30,7 +30,7 @@ from picard.plugin3.api import (
 from .ui_options_genre_mapper import (
     Ui_GenreMapperOptionsPage,
 )
-from re_utils import make_re
+from .re_utils import make_re
 
 
 USER_GUIDE_URL = 'https://picard-plugins-user-guides.readthedocs.io/en/latest/genre_mapper/user_guide.html'

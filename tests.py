@@ -20,7 +20,7 @@
 
 import unittest
 
-from re_utils import make_re
+from .re_utils import make_re
 
 # Test cases for make_re function: tuples of (input string, expected regular expression)
 _FULL_MATCH_TEST_CASES = [
