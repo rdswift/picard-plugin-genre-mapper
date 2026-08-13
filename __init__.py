@@ -20,6 +20,7 @@
 
 import re
 
+from picard.debug_opts import DebugOpt
 from picard.metadata import MULTI_VALUED_JOINER
 from picard.plugin3.api import (
     OptionsPage,
@@ -77,7 +78,7 @@ class GenreMapper:
 
             replacement = replacement.strip()
             pairs.append((original if self.api.plugin_config[OPT_MATCH_REGEX] else make_re(original), replacement))
-            self.api.logger.debug('Add genre mapping pair: "%s" = "%s"', original, replacement,)
+            self.api.logger.debug_if(DebugOpt.PLUGIN_DEVELOPMENT, 'Add genre mapping pair: "%s" = "%s"', original, replacement,)
 
         GenreMappingPairs.set_pairs(pairs)
 
