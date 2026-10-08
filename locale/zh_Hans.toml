@@ -1,1 +1,13 @@
+"manifest.description" = "该插件提供的能力是在 \"genre\" 标签中标准化流派，通过将找到的流派与流派替换映射配置选项中定义的标准流派进行匹配。"
+"manifest.long_description" = "该插件提供的能力是在 \"genre\" 标签中标准化流派，通过将找到的流派与流派替换映射配置选项中定义的标准流派进行匹配。安装后，Picard 的选项中会添加一个设置页面，该页面用于配置插件。\n"
+"manifest.name" = "流派映射器"
+"qt.GenreMapperOptionsPage.page.option.enable" = "启用流派映射"
+"qt.GenreMapperOptionsPage.page.text" = "这些是用于将一个流派条目映射到另一个流派条目的原始/替换对。每个对必须在单独的一行中输入，形式如下：\n\n&nbsp;&nbsp;&nbsp; <strong>[流派匹配测试字符串]</strong>=<strong>[替换流派]</strong>\n\n除非启用“正则表达式”选项，否则在映射的测试字符串部分中支持通配符包括 '*' 和 '?'，分别用于匹配任意数量的字符和一个字符。映射所有类型的摇滚流派（例如 Country Rock、Hard Rock、Progressive Rock、Rockabilly）到“Rock”的示例，可以使用以下行：\n\n&nbsp;&nbsp;&nbsp; <strong>\\*rock\\*</strong>=<strong>Rock</strong>\n\n空行和以等号 (=) 开头的行将被忽略。匹配时使用不区分大小写的测试。替换将按照它们在列表中出现的顺序进行。"
+"qt.GenreMapperOptionsPage.page.title" = "流派映射器"
+"qt.GenreMapperOptionsPage.section.replacements.option.first_only" = "仅应用第一个匹配的替换"
+"qt.GenreMapperOptionsPage.section.replacements.option.use_regex" = "匹配测试作为正则表达式输入"
+"qt.GenreMapperOptionsPage.section.replacements.placeholder.pairs" = "输入替换对（每行一个）"
+"qt.GenreMapperOptionsPage.section.replacements.title" = "替换对"
+"qt.GenreMapperOptionsPage.window.title" = "流派映射器设置"
+"ui.options_page_title" = "流派映射器"
 
