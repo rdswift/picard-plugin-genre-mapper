@@ -18,3 +18,15 @@ settings page will be added to Picard's options, which is where the
 plugin is configured.
 """
 report_bugs_to = "https://github.com/rdswift/picard-plugin-genre-mapper/issues"
+
+[name_i18n]
+fr = "Classificateur de genres"
+zh_CN = "流派映射器"
+
+[description_i18n]
+fr = "Ce plugin permet d'uniformiser les genres dans la balise « genre » en faisant correspondre les genres détectés à un genre standard défini dans l'option de configuration du mappage de remplacement des genres."
+zh_CN = "该插件提供的能力是在 \"genre\" 标签中标准化流派，通过将找到的流派与流派替换映射配置选项中定义的标准流派进行匹配。"
+
+[long_description_i18n]
+fr = "Ce plugin permet d'uniformiser les genres dans la balise « genre » en faisant correspondre les genres détectés à un genre standard défini dans l'option de configuration « genre replacement mapping ». Une fois installé, une page de paramètres sera ajoutée aux options de Picard, où le plugin sera configuré."
+zh_CN = "该插件提供的能力是在 \"genre\" 标签中标准化流派，通过将找到的流派与流派替换映射配置选项中定义的标准流派进行匹配。安装后，Picard 的选项中会添加一个设置页面，该页面用于配置插件。"
