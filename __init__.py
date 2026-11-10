@@ -1,5 +1,7 @@
 #
 # Copyright (C) 2022-2026 Bob Swift (rdswift)
+# Copyright (C) 2022-2026 Bob Swift (rdswift)
+# Copyright (C) 2026 joshinils
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,15 +44,12 @@ OPT_MATCH_FIRST = 'genre_mapper_apply_first_match_only'
 OPT_MATCH_REGEX = 'genre_mapper_use_regex'
 
 
-class GenreMappingPairs:
-    pairs = []
-
+class GenreMapper:
+    pairs: list[tuple[re.Pattern[str], str]] = []
     @classmethod
-    def set_pairs(cls, new_pairs):
+    def set_pairs(cls, new_pairs: list[tuple[re.Pattern[str], str]]) -> None:
         cls.pairs = new_pairs
 
-
-class GenreMapper:
     def __init__(self, api: PluginApi):
         self.api = api
 
@@ -63,7 +62,7 @@ class GenreMapper:
             self.api.logger.warning("Unable to read the '%s' setting.", OPT_MATCH_PAIRS,)
             return
 
-        pairs = []
+        pairs: list[tuple[re.Pattern[str], str]] = []
         for pair in pairs_split(self.api.plugin_config[OPT_MATCH_PAIRS]):
             if "=" not in pair:
                 continue
@@ -74,10 +73,18 @@ class GenreMapper:
                 continue
 
             replacement = replacement.strip()
-            pairs.append((original if self.api.plugin_config[OPT_MATCH_REGEX] else make_re(original), replacement))
+            pairs.append(
+                (
+                    re.compile(
+                        original if self.api.plugin_config[OPT_MATCH_REGEX] else make_re(original),
+                        flags=re.IGNORECASE
+                    ),
+                    replacement
+                )
+            )
             self.api.logger.debug_if(DebugOpt.PLUGIN_DEVELOPMENT, 'Add genre mapping pair: "%s" = "%s"', original, replacement,)
 
-        GenreMappingPairs.set_pairs(pairs)
+        GenreMapper.set_pairs(pairs)
 
         if not pairs:
             self.api.logger.debug("No genre replacement maps defined.")
@@ -90,18 +97,23 @@ class GenreMapper:
             self.api.logger.debug('No genres found for: "%s"', metadata['title'],)
             return
 
-        genre_joiner = self.api.plugin_config[OPT_GENRE_SEPARATOR] if self.api.plugin_config[OPT_GENRE_SEPARATOR] else MULTI_VALUED_JOINER
+        genre_joiner = self.api.global_config.setting[OPT_GENRE_SEPARATOR] if self.api.global_config.setting[OPT_GENRE_SEPARATOR] else MULTI_VALUED_JOINER
+        self.api.logger.debug("Using '%s' as the genre separator.", genre_joiner,)
+
         genres = set()
         metadata_genres = str(metadata['genre']).split(genre_joiner)
         for genre in metadata_genres:
-            for (original, replacement) in GenreMappingPairs.pairs:
+            for (original_re, replacement) in GenreMapper.pairs:
                 try:
-                    if genre and re.search(original, genre, re.IGNORECASE):
-                        genre = replacement
+                    if genre and original_re.search(genre):
+                        if self.api.plugin_config[OPT_MATCH_REGEX]:
+                            genre = original_re.sub(replacement, genre)
+                        else:
+                            genre = replacement
                         if self.api.plugin_config[OPT_MATCH_FIRST]:
                             break
                 except re.error:
-                    self.api.logger.error('Invalid regular expression ignored: "%s"', original,)
+                    self.api.logger.error('Invalid regular expression ignored: "%s"', original_re.pattern,)
             if genre:
                 genres.add(genre.title())
 
