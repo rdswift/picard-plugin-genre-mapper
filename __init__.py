@@ -1,4 +1,5 @@
-#
+"""Genre Mapper Plugin for MusicBrainz Picard"""
+
 # Copyright (C) 2022-2026 Bob Swift (rdswift)
 # Copyright (C) 2026 joshinils
 #
@@ -18,7 +19,6 @@
 
 import re
 
-from picard.debug_opts import DebugOpt
 from picard.metadata import MULTI_VALUED_JOINER
 from picard.plugin3.api import (
     OptionsPage,
@@ -30,38 +30,52 @@ from .ui_options_genre_mapper import (
     Ui_GenreMapperOptionsPage,
 )
 from .utils import (
-    # make_re,
     make_replacement_pairs,
     map_genre,
 )
 
 USER_GUIDE_URL = 'https://picard-plugins-user-guides.readthedocs.io/en/latest/genre_mapper/user_guide.html'
 
-pairs_split = re.compile(r"\r\n|\n\r|\n").split
-
 OPT_GENRE_SEPARATOR = 'join_genres'
 OPT_MATCH_ENABLED = 'genre_mapper_enabled'
 OPT_MATCH_PAIRS = 'genre_mapper_replacement_pairs'
 OPT_MATCH_FIRST = 'genre_mapper_apply_first_match_only'
 OPT_MATCH_REGEX = 'genre_mapper_use_regex'
+OPT_MATCH_CASE_SENSITIVE = 'genre_mapper_case_sensitive'
+OPT_VERBOSE_DEBUG_LOGGING = 'genre_mapper_verbose_logging'
 
 
-# Hold the compiled pairs in a class variable so they can be accessed independently from all instances of the
-# GenreMapper class. This allows the pairs to be shared across both the plugin and the option settings screen,
-# and ensures that they are only compiled once when the option settings are saved, improving performance.
+# Hold the compiled pairs in a class variable so they can be accessed independently from all
+# instances of the `GenreMapper` class.  This allows the pairs to be shared between both the
+# plugin and the option settings screen.
 class GenreMapperPairs:
-    pairs: list[tuple[re.Pattern[str], str]] = []
+    """Genre Mapping Pairs"""
 
-    # @classmethod
-    # def set_pairs(cls, new_pairs: list[tuple[re.Pattern[str], str]]) -> None:
-    #     cls.pairs = new_pairs
+    pairs: list[tuple[re.Pattern[str], str]] = []
 
 
 class GenreMapper:
+    """Genre Mapper Plugin"""
+
+    verbose_logging: bool = False
+
     def __init__(self, api: PluginApi):
         self.api = api
 
+    @classmethod
+    def set_verbose_logging(cls, enabled: bool):
+        """Set the verbose logging flag for the plugin."""
+        cls.verbose_logging = enabled
+
+    def log_verbose(self, message: str, *args):
+        """Log a message to the Picard log if verbose logging is enabled."""
+        if self.verbose_logging:
+            self.api.logger.debug(message, *args)
+
     def refresh(self):
+        """Refresh the genre mapping pairs from the option settings.
+        """
+        self.set_verbose_logging(self.api.plugin_config[OPT_VERBOSE_DEBUG_LOGGING])
         self.api.logger.debug(
             "Refreshing the genre replacement maps processing pairs using '%s' translation.",
             'RegEx' if self.api.plugin_config[OPT_MATCH_REGEX] else 'Simple',
@@ -71,7 +85,13 @@ class GenreMapper:
             self.api.logger.warning("Unable to read the '%s' setting.", OPT_MATCH_PAIRS,)
             return
 
-        GenreMapperPairs.pairs, errs = make_replacement_pairs(pairs_string, use_regex=self.api.plugin_config[OPT_MATCH_REGEX])
+        case_sensitive = self.api.plugin_config[OPT_MATCH_CASE_SENSITIVE]
+
+        GenreMapperPairs.pairs, errs = make_replacement_pairs(
+            pairs_string,
+            use_regex=self.api.plugin_config[OPT_MATCH_REGEX],
+            case_sensitive=case_sensitive,
+        )
 
         for err in errs:
             self.api.logger.error('Invalid regular expression ignored: "%s"', err,)
@@ -81,31 +101,8 @@ class GenreMapper:
             return
 
         for original_re, replacement in GenreMapperPairs.pairs:
-            self.api.logger.debug_if(DebugOpt.PLUGIN_DEVELOPMENT, 'Add genre mapping pair: "%s" = "%s"', original_re.pattern, replacement,)
-
-        # pairs: list[tuple[re.Pattern[str], str]] = []
-        # for pair in pairs_split(self.api.plugin_config[OPT_MATCH_PAIRS]):
-        #     if "=" not in pair:
-        #         continue
-
-        #     original, replacement = pair.split('=', 1)
-        #     original = original.strip()
-        #     if not original:
-        #         continue
-
-        #     replacement = replacement.strip()
-        #     pairs.append(
-        #         (
-        #             re.compile(
-        #                 original if self.api.plugin_config[OPT_MATCH_REGEX] else make_re(original),
-        #                 flags=re.IGNORECASE
-        #             ),
-        #             replacement
-        #         )
-        #     )
-        #     self.api.logger.debug_if(DebugOpt.PLUGIN_DEVELOPMENT, 'Add genre mapping pair: "%s" = "%s"', original, replacement,)
-
-        # GenreMapperPairs.pairs = pairs
+            self.log_verbose('Compiled genre replacement map: "%s" => "%s" (case-%ssensitive)',
+                             original_re.pattern, replacement, "" if case_sensitive else "in")
 
     def track_genre_mapper(self, api, album, metadata, *args):
         if not self.api.plugin_config[OPT_MATCH_ENABLED]:
@@ -115,38 +112,26 @@ class GenreMapper:
             self.api.logger.debug('No genres found for: "%s"', metadata['title'],)
             return
 
-        genre_joiner = self.api.global_config.setting[OPT_GENRE_SEPARATOR] if self.api.global_config.setting[OPT_GENRE_SEPARATOR] else MULTI_VALUED_JOINER
-        self.api.logger.debug("Using '%s' as the genre separator.", genre_joiner,)
+        genre_joiner = self.api.global_config.setting[OPT_GENRE_SEPARATOR]
+        if not genre_joiner:
+            genre_joiner = MULTI_VALUED_JOINER
 
         use_regex = self.api.plugin_config[OPT_MATCH_REGEX]
         match_first_only = self.api.plugin_config[OPT_MATCH_FIRST]
 
+        self.log_verbose("Using '%s' as the genre separator.", genre_joiner,)
+
         genres = set()
-
-
-        print(f"\n\nOriginal metadata genres: '{metadata['genre']}'")  # Debugging print statement
-
-
         metadata_genres = str(metadata['genre']).split(genre_joiner)
+
+        self.log_verbose("Original metadata genres: '%s'", metadata_genres,)
+
         for genre in metadata_genres:
             new_genre, errs = map_genre(genre, GenreMapperPairs.pairs, use_regex, match_first_only)
-            # for (original_re, replacement) in GenreMapperPairs.pairs:
-            #     try:
-            #         if genre and original_re.search(genre):
-            #             if self.api.plugin_config[OPT_MATCH_REGEX]:
-            #                 genre = original_re.sub(replacement, genre)
-            #             else:
-            #                 genre = replacement
-            #             if self.api.plugin_config[OPT_MATCH_FIRST]:
-            #                 break
-            #     except re.error:
-            #         self.api.logger.error('Invalid regular expression ignored: "%s"', original_re.pattern,)
             for err in errs:
                 self.api.logger.error('Invalid regular expression ignored: "%s"', err,)
 
-
-            print(f"  - Original genre: '{genre}', Mapped genre: '{new_genre}'")  # Debugging print statement
-
+            self.log_verbose("Original genre: '%s'  ==>  Mapped genre: '%s'", genre, new_genre)
 
             if new_genre:
                 genres.add(new_genre.title())
@@ -156,13 +141,17 @@ class GenreMapper:
         metadata['genre'] = genres
 
 
-        print('\n')  # Debugging print statement
-
-
-
 class GenreMapperOptionsPage(OptionsPage):
 
     TITLE = t_("ui.options_page_title", "Genre Mapper")
+    OPTIONS = {
+        OPT_MATCH_ENABLED: {'widgets': ['cb_enable_genre_mapping']},
+        OPT_MATCH_PAIRS: {'widgets': ['genre_mapper_replacement_pairs']},
+        OPT_MATCH_FIRST: {'widgets': ['cb_first_match_only']},
+        OPT_MATCH_REGEX: {'widgets': ['cb_use_regex']},
+        OPT_MATCH_CASE_SENSITIVE: {'widgets': ['cb_case_sensitive']},
+        OPT_VERBOSE_DEBUG_LOGGING: {'widgets': ['cb_verbose_logging']},
+    }
     HELP_URL = USER_GUIDE_URL
 
     def __init__(self, parent=None) -> None:
@@ -172,15 +161,19 @@ class GenreMapperOptionsPage(OptionsPage):
 
     def load(self):
         self.ui.genre_mapper_replacement_pairs.setPlainText(self.api.plugin_config[OPT_MATCH_PAIRS])
-        self.ui.genre_mapper_first_match_only.setChecked(self.api.plugin_config[OPT_MATCH_FIRST])
+        self.ui.cb_first_match_only.setChecked(self.api.plugin_config[OPT_MATCH_FIRST])
         self.ui.cb_enable_genre_mapping.setChecked(self.api.plugin_config[OPT_MATCH_ENABLED])
         self.ui.cb_use_regex.setChecked(self.api.plugin_config[OPT_MATCH_REGEX])
+        self.ui.cb_case_sensitive.setChecked(self.api.plugin_config[OPT_MATCH_CASE_SENSITIVE])
+        self.ui.cb_verbose_logging.setChecked(self.api.plugin_config[OPT_VERBOSE_DEBUG_LOGGING])
 
     def save(self):
         self.api.plugin_config[OPT_MATCH_PAIRS] = self.ui.genre_mapper_replacement_pairs.toPlainText()
-        self.api.plugin_config[OPT_MATCH_FIRST] = self.ui.genre_mapper_first_match_only.isChecked()
+        self.api.plugin_config[OPT_MATCH_FIRST] = self.ui.cb_first_match_only.isChecked()
         self.api.plugin_config[OPT_MATCH_ENABLED] = self.ui.cb_enable_genre_mapping.isChecked()
         self.api.plugin_config[OPT_MATCH_REGEX] = self.ui.cb_use_regex.isChecked()
+        self.api.plugin_config[OPT_MATCH_CASE_SENSITIVE] = self.ui.cb_case_sensitive.isChecked()
+        self.api.plugin_config[OPT_VERBOSE_DEBUG_LOGGING] = self.ui.cb_verbose_logging.isChecked()
 
         GenreMapper(self.api).refresh()
 
@@ -188,10 +181,47 @@ class GenreMapperOptionsPage(OptionsPage):
 def enable(api: PluginApi):
     """Called when plugin is enabled."""
     # Register configuration options
-    api.plugin_config.register_option(OPT_MATCH_PAIRS, ''),
-    api.plugin_config.register_option(OPT_MATCH_FIRST, False),
-    api.plugin_config.register_option(OPT_MATCH_ENABLED, False),
-    api.plugin_config.register_option(OPT_MATCH_REGEX, False),
+    api.plugin_config.register_option(
+        OPT_MATCH_PAIRS,
+        '',
+        title=api.tr('ui.option.title.match_pairs', "Match pairs"),
+        in_profile=True,
+    ),
+
+    api.plugin_config.register_option(
+        OPT_MATCH_FIRST,
+        False,
+        title=api.tr('ui.option.title.match_first', "Match first only"),
+        in_profile=True,
+    ),
+
+    api.plugin_config.register_option(
+        OPT_MATCH_ENABLED,
+        False,
+        title=api.tr('ui.option.title.match_enabled', "Mapping enabled"),
+        in_profile=True,
+    ),
+
+    api.plugin_config.register_option(
+        OPT_MATCH_REGEX,
+        False,
+        title=api.tr('ui.option.title.match_regex', "Use regular expressions"),
+        in_profile=True,
+    ),
+
+    api.plugin_config.register_option(
+        OPT_MATCH_CASE_SENSITIVE,
+        False,
+        title=api.tr('ui.option.title.match_case_sensitive', "Case-sensitive matching"),
+        in_profile=True,
+    ),
+
+    api.plugin_config.register_option(
+        OPT_VERBOSE_DEBUG_LOGGING,
+        False,
+        title=api.tr('ui.option.title.verbose_debug_logging', "Verbose debug logging"),
+        in_profile=True,
+    ),
 
     # Migrate settings from 2.x version if available
     migrate_settings(api)

@@ -50,12 +50,13 @@ def make_re(map_string: str, full_match: bool = True) -> str:
     return re_string
 
 
-def make_replacement_pairs(pairs_string: str, use_regex: bool = False) -> tuple[list[tuple[re.Pattern[str], str]], list[str]]:
+def make_replacement_pairs(pairs_string: str, use_regex: bool = False, case_sensitive: bool = False) -> tuple[list[tuple[re.Pattern[str], str]], list[str]]:
     """Convert a string of replacement pairs to a list of tuples.
 
     Args:
         pairs_string (str): String of replacement pairs.
         use_regex (bool, optional): Use regular expressions for matching. Defaults to False.
+        case_sensitive (bool, optional): Make the matching case-sensitive. Defaults to False.
 
     Returns:
         tuple[list[tuple[re.Pattern[str], str]], list[str]]: A tuple containing the list of replacement pairs and a list of invalid regular expressions.
@@ -69,7 +70,7 @@ def make_replacement_pairs(pairs_string: str, use_regex: bool = False) -> tuple[
             replacement = replacement.strip()
             if match and replacement:
                 try:
-                    re_pattern = re.compile(match if use_regex else make_re(match), re.IGNORECASE)
+                    re_pattern = re.compile(match if use_regex else make_re(match), re.IGNORECASE if not case_sensitive else 0)
                     pairs.append((re_pattern, replacement))
                 except re.error:
                     errs.append(match)
