@@ -1,6 +1,5 @@
 #
 # Copyright (C) 2022-2026 Bob Swift (rdswift)
-# Copyright (C) 2022-2026 Bob Swift (rdswift)
 # Copyright (C) 2026 joshinils
 #
 # This program is free software; you can redistribute it and/or modify
@@ -30,8 +29,11 @@ from picard.plugin3.api import (
 from .ui_options_genre_mapper import (
     Ui_GenreMapperOptionsPage,
 )
-from .re_utils import make_re
-
+from .utils import (
+    # make_re,
+    make_replacement_pairs,
+    map_genre,
+)
 
 USER_GUIDE_URL = 'https://picard-plugins-user-guides.readthedocs.io/en/latest/genre_mapper/user_guide.html'
 
@@ -44,12 +46,18 @@ OPT_MATCH_FIRST = 'genre_mapper_apply_first_match_only'
 OPT_MATCH_REGEX = 'genre_mapper_use_regex'
 
 
-class GenreMapper:
+# Hold the compiled pairs in a class variable so they can be accessed independently from all instances of the
+# GenreMapper class. This allows the pairs to be shared across both the plugin and the option settings screen,
+# and ensures that they are only compiled once when the option settings are saved, improving performance.
+class GenreMapperPairs:
     pairs: list[tuple[re.Pattern[str], str]] = []
-    @classmethod
-    def set_pairs(cls, new_pairs: list[tuple[re.Pattern[str], str]]) -> None:
-        cls.pairs = new_pairs
 
+    # @classmethod
+    # def set_pairs(cls, new_pairs: list[tuple[re.Pattern[str], str]]) -> None:
+    #     cls.pairs = new_pairs
+
+
+class GenreMapper:
     def __init__(self, api: PluginApi):
         self.api = api
 
@@ -58,36 +66,46 @@ class GenreMapper:
             "Refreshing the genre replacement maps processing pairs using '%s' translation.",
             'RegEx' if self.api.plugin_config[OPT_MATCH_REGEX] else 'Simple',
         )
-        if self.api.plugin_config[OPT_MATCH_PAIRS] is None:
+        pairs_string = self.api.plugin_config[OPT_MATCH_PAIRS]
+        if pairs_string is None:
             self.api.logger.warning("Unable to read the '%s' setting.", OPT_MATCH_PAIRS,)
             return
 
-        pairs: list[tuple[re.Pattern[str], str]] = []
-        for pair in pairs_split(self.api.plugin_config[OPT_MATCH_PAIRS]):
-            if "=" not in pair:
-                continue
+        GenreMapperPairs.pairs, errs = make_replacement_pairs(pairs_string, use_regex=self.api.plugin_config[OPT_MATCH_REGEX])
 
-            original, replacement = pair.split('=', 1)
-            original = original.strip()
-            if not original:
-                continue
+        for err in errs:
+            self.api.logger.error('Invalid regular expression ignored: "%s"', err,)
 
-            replacement = replacement.strip()
-            pairs.append(
-                (
-                    re.compile(
-                        original if self.api.plugin_config[OPT_MATCH_REGEX] else make_re(original),
-                        flags=re.IGNORECASE
-                    ),
-                    replacement
-                )
-            )
-            self.api.logger.debug_if(DebugOpt.PLUGIN_DEVELOPMENT, 'Add genre mapping pair: "%s" = "%s"', original, replacement,)
-
-        GenreMapper.set_pairs(pairs)
-
-        if not pairs:
+        if not GenreMapperPairs.pairs:
             self.api.logger.debug("No genre replacement maps defined.")
+            return
+
+        for original_re, replacement in GenreMapperPairs.pairs:
+            self.api.logger.debug_if(DebugOpt.PLUGIN_DEVELOPMENT, 'Add genre mapping pair: "%s" = "%s"', original_re.pattern, replacement,)
+
+        # pairs: list[tuple[re.Pattern[str], str]] = []
+        # for pair in pairs_split(self.api.plugin_config[OPT_MATCH_PAIRS]):
+        #     if "=" not in pair:
+        #         continue
+
+        #     original, replacement = pair.split('=', 1)
+        #     original = original.strip()
+        #     if not original:
+        #         continue
+
+        #     replacement = replacement.strip()
+        #     pairs.append(
+        #         (
+        #             re.compile(
+        #                 original if self.api.plugin_config[OPT_MATCH_REGEX] else make_re(original),
+        #                 flags=re.IGNORECASE
+        #             ),
+        #             replacement
+        #         )
+        #     )
+        #     self.api.logger.debug_if(DebugOpt.PLUGIN_DEVELOPMENT, 'Add genre mapping pair: "%s" = "%s"', original, replacement,)
+
+        # GenreMapperPairs.pairs = pairs
 
     def track_genre_mapper(self, api, album, metadata, *args):
         if not self.api.plugin_config[OPT_MATCH_ENABLED]:
@@ -100,26 +118,46 @@ class GenreMapper:
         genre_joiner = self.api.global_config.setting[OPT_GENRE_SEPARATOR] if self.api.global_config.setting[OPT_GENRE_SEPARATOR] else MULTI_VALUED_JOINER
         self.api.logger.debug("Using '%s' as the genre separator.", genre_joiner,)
 
+        use_regex = self.api.plugin_config[OPT_MATCH_REGEX]
+        match_first_only = self.api.plugin_config[OPT_MATCH_FIRST]
+
         genres = set()
+
+
+        print(f"\n\nOriginal metadata genres: '{metadata['genre']}'")  # Debugging print statement
+
+
         metadata_genres = str(metadata['genre']).split(genre_joiner)
         for genre in metadata_genres:
-            for (original_re, replacement) in GenreMapper.pairs:
-                try:
-                    if genre and original_re.search(genre):
-                        if self.api.plugin_config[OPT_MATCH_REGEX]:
-                            genre = original_re.sub(replacement, genre)
-                        else:
-                            genre = replacement
-                        if self.api.plugin_config[OPT_MATCH_FIRST]:
-                            break
-                except re.error:
-                    self.api.logger.error('Invalid regular expression ignored: "%s"', original_re.pattern,)
-            if genre:
-                genres.add(genre.title())
+            new_genre, errs = map_genre(genre, GenreMapperPairs.pairs, use_regex, match_first_only)
+            # for (original_re, replacement) in GenreMapperPairs.pairs:
+            #     try:
+            #         if genre and original_re.search(genre):
+            #             if self.api.plugin_config[OPT_MATCH_REGEX]:
+            #                 genre = original_re.sub(replacement, genre)
+            #             else:
+            #                 genre = replacement
+            #             if self.api.plugin_config[OPT_MATCH_FIRST]:
+            #                 break
+            #     except re.error:
+            #         self.api.logger.error('Invalid regular expression ignored: "%s"', original_re.pattern,)
+            for err in errs:
+                self.api.logger.error('Invalid regular expression ignored: "%s"', err,)
+
+
+            print(f"  - Original genre: '{genre}', Mapped genre: '{new_genre}'")  # Debugging print statement
+
+
+            if new_genre:
+                genres.add(new_genre.title())
 
         genres = sorted(genres)
         self.api.logger.debug('Genres updated from %s to %s', metadata_genres, genres,)
         metadata['genre'] = genres
+
+
+        print('\n')  # Debugging print statement
+
 
 
 class GenreMapperOptionsPage(OptionsPage):
